@@ -7,8 +7,15 @@ contract Ticket {
     uint256 public ticketPrice;
     uint256 public ticketsPerPurchase;
 
+    struct Season {
+        uint256 id;
+        uint256 startAt;
+        uint256 endAt;
+    }
+    Season[] public seasons;
     event TicketsPurchased(address indexed buyer, uint256 numberOfTickets);
     event UpdateConfig(uint256 ticketPrice, uint256 ticketsPerPurchase);
+    event SeasonCreated(uint256 seasonId, uint256 startAt, uint256 endAt);
 
     constructor(
         uint256 _initialTicketPrice,
@@ -24,6 +31,13 @@ contract Ticket {
         _;
     }
 
+    function createSeason(uint256 _startAt, uint256 _endAt) public onlyOwner {
+        require(_endAt > _startAt, "Invalid season dates");
+        uint256 seasonId = seasons.length;
+        seasons.push(Season(seasonId, _startAt, _endAt));
+        emit SeasonCreated(seasonId, _startAt, _endAt);
+    }
+
     function buyTickets() public payable {
         uint256 totalCost = ticketsPerPurchase * ticketPrice;
         require(
@@ -31,8 +45,7 @@ contract Ticket {
             "Insufficient ETH sent to purchase the tickets"
         );
         ticketBalances[msg.sender] += ticketsPerPurchase;
-         if (msg.value > totalCost) {
-            // Refund any excess ETH sent
+        if (msg.value > totalCost) {
             payable(msg.sender).transfer(msg.value - totalCost);
         }
         emit TicketsPurchased(msg.sender, ticketsPerPurchase);
@@ -42,7 +55,6 @@ contract Ticket {
         payable(owner).transfer(address(this).balance);
     }
 
-    // Allow the owner to update the ticket price and the maximum number of tickets per purchase
     function updateTicketDetails(
         uint256 _newTicketPrice,
         uint256 _newTicketsPerPurchase
