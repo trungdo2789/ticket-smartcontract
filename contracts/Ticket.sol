@@ -4,26 +4,19 @@ pragma solidity ^0.8.9;
 contract Ticket {
     address public owner;
     mapping(address => uint256) public ticketBalances;
-    uint256 public ticketPrice;
-    uint256 public ticketsPerPurchase;
+    uint256 public ticketLotPrice = 0.01 ether;
+    uint256 public ticketsPerBulk = 50; // Number of tickets per bulk purchase
+    uint256 public bulkDiscount5 = 10; // 10% discount for 5 bulk purchases
+    uint256 public bulkDiscount10 = 20; // 20% discount for 10 bulk purchases
 
-    struct Season {
-        uint256 id;
-        uint256 startAt;
-        uint256 endAt;
-    }
-    Season[] public seasons;
-    event TicketsPurchased(address indexed buyer, uint256 numberOfTickets);
-    event UpdateConfig(uint256 ticketPrice, uint256 ticketsPerPurchase);
-    event SeasonCreated(uint256 seasonId, uint256 startAt, uint256 endAt);
+    event TicketsPurchased(
+        address indexed buyer,
+        uint256 numberOfTickets,
+        uint256 cost
+    );
 
-    constructor(
-        uint256 _initialTicketPrice,
-        uint256 _initialTicketsPerPurchase
-    ) {
+    constructor() {
         owner = msg.sender;
-        ticketPrice = _initialTicketPrice;
-        ticketsPerPurchase = _initialTicketsPerPurchase;
     }
 
     modifier onlyOwner() {
@@ -31,36 +24,55 @@ contract Ticket {
         _;
     }
 
-    function createSeason(uint256 _startAt, uint256 _endAt) public onlyOwner {
-        require(_endAt > _startAt, "Invalid season dates");
-        uint256 seasonId = seasons.length;
-        seasons.push(Season(seasonId, _startAt, _endAt));
-        emit SeasonCreated(seasonId, _startAt, _endAt);
-    }
-
     function buyTickets() public payable {
-        uint256 totalCost = ticketsPerPurchase * ticketPrice;
+        uint256 numberOfLotToBuy = msg.value / ticketLotPrice;
+        uint256 numberOfTicketsToBuy = numberOfLotToBuy * ticketsPerBulk;
+
+        require(numberOfLotToBuy > 0, "You must buy at least one lot");
+
+        uint256 totalCost = numberOfLotToBuy * ticketLotPrice;
+        uint256 discount = 0;
+
+        // Apply discounts based on the number of bulk purchases
+        if (numberOfLotToBuy >= 10) {
+            // 20% discount for 10 bulk purchases
+            discount = (totalCost * bulkDiscount10) / 100;
+        } else if (numberOfLotToBuy >= 5) {
+            // 10% discount for 5 bulk purchases
+            discount = (totalCost * bulkDiscount5) / 100;
+        }
+
+        totalCost -= discount;
+
         require(
             msg.value >= totalCost,
             "Insufficient ETH sent to purchase the tickets"
         );
-        ticketBalances[msg.sender] += ticketsPerPurchase;
+
+        ticketBalances[msg.sender] += numberOfTicketsToBuy;
+
         if (msg.value > totalCost) {
+            // Refund any excess ETH sent
             payable(msg.sender).transfer(msg.value - totalCost);
         }
-        emit TicketsPurchased(msg.sender, ticketsPerPurchase);
+
+        emit TicketsPurchased(msg.sender, numberOfTicketsToBuy, totalCost);
     }
 
     function withdrawFunds() public onlyOwner {
         payable(owner).transfer(address(this).balance);
     }
 
-    function updateTicketDetails(
-        uint256 _newTicketPrice,
-        uint256 _newTicketsPerPurchase
+    // Allow the owner to update the ticket price, number of tickets per bulk, and discounts
+    function UpdateConfig(
+        uint256 _newTicketLotPrice,
+        uint256 _newTicketsPerBulk,
+        uint256 _newBulkDiscount5,
+        uint256 _newBulkDiscount10
     ) public onlyOwner {
-        ticketPrice = _newTicketPrice;
-        ticketsPerPurchase = _newTicketsPerPurchase;
-        emit UpdateConfig(_newTicketPrice, _newTicketsPerPurchase);
+        ticketLotPrice = _newTicketLotPrice;
+        ticketsPerBulk = _newTicketsPerBulk;
+        bulkDiscount5 = _newBulkDiscount5;
+        bulkDiscount10 = _newBulkDiscount10;
     }
 }

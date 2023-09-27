@@ -11,14 +11,8 @@ async function main() {
 
   console.log("Deploying contracts with the account:", deployer.address);
 
-  const ticketPrice = ethers.parseEther("0.001"); // 0.1 ETH
-  const ticketsPerPurchase = 10;
-
-  console.log("Ticket Price:", ticketPrice.toString());
-  console.log("Tickets Per Purchase:", ticketsPerPurchase);
-
   const Ticket = await ethers.getContractFactory("Ticket");
-  const ticket = await Ticket.deploy(ticketPrice, ticketsPerPurchase);
+  const ticket = await Ticket.deploy();
 
   console.log("Ticket contract deployed to:", await ticket.getAddress());
 
@@ -26,7 +20,7 @@ async function main() {
   if (network.name === "mainnet") {
     await hre.run("verify:verify", {
       address: ticket.address,
-      constructorArguments: [ticketPrice, ticketsPerPurchase],
+      constructorArguments: [],
     });
   }
 }
