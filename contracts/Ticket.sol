@@ -24,15 +24,9 @@ contract Ticket {
         _;
     }
 
-    function buyTickets() public payable {
-        uint256 numberOfLotToBuy = msg.value / ticketLotPrice;
-        uint256 numberOfTicketsToBuy = numberOfLotToBuy * ticketsPerBulk;
-
-        require(numberOfLotToBuy > 0, "You must buy at least one lot");
-
+    function getCost(uint256 numberOfLotToBuy) public view returns (uint256) {
         uint256 totalCost = numberOfLotToBuy * ticketLotPrice;
         uint256 discount = 0;
-
         // Apply discounts based on the number of bulk purchases
         if (numberOfLotToBuy >= 10) {
             // 20% discount for 10 bulk purchases
@@ -41,8 +35,17 @@ contract Ticket {
             // 10% discount for 5 bulk purchases
             discount = (totalCost * bulkDiscount5) / 100;
         }
-
         totalCost -= discount;
+        return totalCost;
+    }
+
+    function buyTickets() public payable {
+        uint256 numberOfLotToBuy = msg.value / ticketLotPrice;
+        uint256 numberOfTicketsToBuy = numberOfLotToBuy * ticketsPerBulk;
+
+        require(numberOfLotToBuy > 0, "You must buy at least one lot");
+
+        uint256 totalCost = getCost(numberOfLotToBuy);
 
         require(
             msg.value >= totalCost,
